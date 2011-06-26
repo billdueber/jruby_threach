@@ -18,9 +18,10 @@ Jeweler::Tasks.new do |gem|
   gem.homepage = "http://github.com/billdueber/jruby_threach"
   gem.license = "MIT"
   gem.summary = %Q{JRuby-specific threach using java blockingqueue}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.description = %Q{Similar to threach, but with the ability to deal with errors. MRI doesn't have reliable timeouts so the queue classes are crippled.}
   gem.email = "bill@dueber.com"
   gem.authors = ["BillDueber"]
+  gem.platform = 'java'
   # dependencies defined in Gemfile
 end
 Jeweler::RubygemsDotOrgTasks.new

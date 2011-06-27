@@ -4,6 +4,9 @@ java_import java.util.concurrent.TimeUnit
 java_import org.jruby.exceptions.JumpException::BreakJump
 
 module Threach
+  
+  DEBUG = false
+  
   class ThreachBreak < RuntimeError; end
   class ThreachNotMyError < RuntimeError; end
   class ThreachEndOfRun < RuntimeError; end
@@ -58,7 +61,7 @@ module Enumerable
 
               # Should we be bailing?
               if bail
-                print "Thread #{Thread.current[:threach_num]}: BAIL!\n"
+                print "Thread #{Thread.current[:threach_num]}: BAIL!\n" if Threach::DEBUG
                 Thread.current[:threach_bail] = true
                 raise Threach::ThreachNotMyError.new, "bailing", nil
               end
@@ -80,15 +83,17 @@ module Enumerable
             end
           
           rescue Threach::ThreachNotMyError => e
-            print "Thread #{Thread.current[:threach_num]}: Not my error\n"
+            print "Thread #{Thread.current[:threach_num]}: Not my error\n" if Threach::DEBUG
+            Thread.current[:threach_bail] = true            
             # do nothing; wasn't my error, so I just bailed
           
           rescue Threach::ThreachEndOfRun => e
-            print "Thread #{Thread.current[:threach_num]}: End of run\n"
+            print "Thread #{Thread.current[:threach_num]}: End of run\n" if Threach::DEBUG
+            Thread.current[:threach_bail] = true            
             # do nothing; everything exited normally 
             
           rescue Exception => e
-            print "Thread #{Thread.current[:threach_num]}: Exception #{e.inspect}: #{e.message}\n"
+            print "Thread #{Thread.current[:threach_num]}: Exception #{e.inspect}: #{e.message}\n" if Threach::DEBUG
             # Some other error; let everyone else know
             bail = true
             Thread.current[:threach_bail]
@@ -98,7 +103,7 @@ module Enumerable
             # But if I get here and nothing else is set, that means I broke and need to deal with
             # it accordingly
             unless Thread.current[:threach_bail] or Thread.current[:threach_outofdata]
-              print "Thread #{Thread.current[:threach_num]}: broke out of loop\n"
+              print "Thread #{Thread.current[:threach_num]}: broke out of loop\n" if Threach::DEBUG
               bail = true
             end
           end
@@ -116,33 +121,36 @@ module Enumerable
             # if we're in here, we got a timeout. Check for errors
             raise Threach::ThreachNotMyError.new, "bailing", nil if bail if bail
           end
+          print "Queued #{x}\n" if Threach::DEBUG
         end
 
         # We're all done. Let 'em know
-        print "Setting outofdata to true"
+        print "Setting outofdata to true\n" if Threach::DEBUG
         outofdata = true
       
       rescue NativeException => e
-        print "Producer rescuing native exception #{e.inspect}"
+        print "Producer rescuing native exception #{e.inspect}" if Threach::DEBUG
       
       rescue Threach::ThreachNotMyError => e
-        print "Producer: not my error\n"
+        print "Producer: not my error\n" if Threach::DEBUG
         # do nothing. Not my error
         
       rescue Exception => e
-        print "Producer: exception\n"
+        print "Producer: exception\n" if Threach::DEBUG
+        bail = true
         errorq.push e
-      end
-      
-      # Everything's done. If there's an error on the stack, raise it
-      if e = errorq.peek
-        print "Producer: raising #{e.inspect}\n"
-        raise e, e.message, nil
       end
       
       # Finally, #join the consumers
       
       consumers.each {|t| t.join}
+      
+      # Everything's done. If there's an error on the stack, raise it
+       if e = errorq.peek
+         print "Producer: raising #{e.inspect}\n" if Threach::DEBUG
+         raise e, e.message, nil
+       end
+      
 
     end
   end

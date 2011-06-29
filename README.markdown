@@ -48,6 +48,9 @@ If your producer is also variable -- think getting stuff from a few different se
 
     # Open three files, each in its own thread, and allocate two additional
     # threads to each to process the lines
+    #
+    # Note: do the math. 
+    # That's (file = 3) + (files = 3 * consumers = 2) = 9 threads
     
     files = ['Rakefile', 'README.rdoc', 'LICENSE.txt']
     files.threach(3) do |f|

@@ -17,8 +17,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "jruby_threach"
   gem.homepage = "http://github.com/billdueber/jruby_threach"
   gem.license = "MIT"
-  gem.summary = %Q{JRuby-specific threach using java blockingqueue}
-  gem.description = %Q{Similar to threach, but with the ability to deal with errors. MRI doesn't have reliable timeouts so the queue classes are crippled.}
+  gem.summary = %Q{Very simply run a block of code using multiple threads under jruby}
+  gem.description = %Q{Run a block of code in multiple threads. Similar to threach, but with the ability to deal with breaks/exceptions (MRI can't because of unreliable timeouts).}
   gem.email = "bill@dueber.com"
   gem.authors = ["BillDueber"]
   gem.platform = 'java'

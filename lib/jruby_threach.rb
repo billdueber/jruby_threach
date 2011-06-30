@@ -7,32 +7,150 @@ module Threach
   
   DEBUG = false
   
+  # Exception for when a consumer encounters a 'break'
   class ThreachBreak < RuntimeError; end
+  # Exception to note that another thread has told the rest of us
+  # to wind it down due to an error
   class ThreachNotMyError < RuntimeError; end
+  # Exception that indicates that we've legitimately run out of data
+  # to process
   class ThreachEndOfRun < RuntimeError; end
+  
+  
+  # An ArrayBlockingQueue with reasonable defaults
+  # for timeouts.
   
   class Queue < ArrayBlockingQueue
     MS = TimeUnit::MILLISECONDS
-     
-    def initialize (size=2, timeout_in_ms = 5)
+    
+    # Create a new queue 
+    # @param [Integer] size The size of the queue
+    # @param [Integer] timeout_in_ms How long to wait when trying to push or pop
+    # @return [Queue] the new queue
+    def initialize (size=5, timeout_in_ms = 5)
       super(size)
       @timeout = timeout_in_ms
     end
     
-    # push will return false if it times out; true otherwise
+    # Try to add an object to the queue
+    # @param [Object] obj The object to push
+    # @return [Boolean] true on success, false on timeout
     def push obj
       self.offer obj, @timeout, MS
     end
     
-    # Pop will return nil if it times out; the popped object otherwise
+    # Pop an object ouf of the queue
+    # @return [Object, nil] nil if it times out; the popped object otherwise
     def pop
       self.poll @timeout, MS
     end
   end
+
+
+  # A class that encapsulates several enumerables (that respond to the same 
+  # enumerable with the same arity) and allows you to call them as if they
+  # were a single enumerable (using multiple threads to draw from them, if
+  # desired)
+  class MultiEnum
+    include Enumerable
+    
+    # The queue that acts as the common cache for objects pulled
+    # from each of the enumerables
+    attr_accessor :queue
+    
+    # Create a new MultiEnum
+    # @param [Enumerable] enumerators A list of enumerators that you wish to act as a single enum
+    # @param [Symbol] iterator Which iterator to call against each enum
+    # @param [Integer] size The size of the underlying queue
+    # @param [Integer, nil] numthreads The number of threads to dedicate to pulling items 
+    #   off the enumerators and pushing them onto the shared queue. nil or zero implies one for
+    #   each enumerator
+    # @return [Threach::MultiEnum] the new multi-enumerator
+    def initialize enumerators, iterator = :each, size = 5, numthreads=nil
+      @enum = enumerators
+      @iter = iterator
+      @size = size
+      @numthreads = (numthreads.nil? or numthreads == 0) ? enumerators.size : numthreads
+      @queue = Threach::Queue.new(@size)
+    end
+    
+    
+    # Pull records out of the given enumerators using the number of threads
+    # specified at initialization. Order of items is, obviously, not 
+    # guaranteed.
+    #
+    # Also obviously, the passed block need to be of the same arity as the 
+    # enumerator symbol passed into the intializer.
+    # 
+    # An uncaptured exception thrown by any of the enumerators will bring 
+    # the whole thing crashing down. 
+    def each &blk
+      @producers = []
+      tmn = -1
+      @enum.each_slice(@numthreads).each do |eslice|
+        tmn += 1
+        @producers << Thread.new(eslice, tmn) do |eslice, tmn|
+          Thread.current[:threach_multi_num] = "p#{tmn}"
+          begin
+            eslice.size.times do |i|
+              eslice[i].send(@iter) do |*x|
+                # puts "...pushing #{x}"
+                @queue.put "#{Thread.current[:threach_multi_num]}: #{x}"
+              end
+            end
+            @queue.put :threach_multi_eof
+          rescue Exception => e
+            @queue.put :threach_multi_eof
+            raise StopIteration.new "Error in #{eslice.inspect}: #{e.inspect}"
+          end
+        end
+      end
+
+      done = 0
+      
+      while done < @numthreads
+        d = @queue.take
+        # puts "...pulling #{d}"
+        if d == :threach_multi_eof
+          done += 1 
+          next
+        end
+        yield d
+      end
+      
+      @producers.each {|p| p.join}
+    end
+  end
+  
 end
 
+# Enumerable is monkey-patched to provide two new methods: #threach and 
+# #mthreach. 
 module Enumerable
   
+  # Build up a MultiEnum from the calling object and run threach against
+  # it
+  # @param [Integer, nil] pthreads The number of producer threads to run within the 
+  #   created Threach::MultiEnum
+  # @param [Integer] threads The number of consumer threads to run in #threach
+  # @param [Symbol] iterator Which iterator to call (:each, :each_with_index, etc.)
+  # 
+  # @example
+  #   [1..10, 'a'..'z'].mthreach(2,2) {|i| process_item(i)}
+  # 
+  def mthreach(pthreads=nil, threads = 0, iterator = :each,  &blk)
+    me = Threach::MultiEnum.new(self, iterator, threads * 3, pthreads)
+    me.send(:threach, threads, iterator, &blk)
+  end
+  
+  # Run the passed block using the given iterator using the given 
+  # number of threads. If one of the consumer threads bails for any reason
+  # (break, throw an un-rescued error), the whole thing will shut down in an
+  # orderly fashion.
+  # @param [Integer] threads How many threads to use. 0 means to skip the whole 
+  #   threading thing completely and just directly call the indicated iterator
+  # @param [Symbol] iterator Which iterator to use (:each, :each_with_index, :each_line, 
+  #   etc.). 
   def threach(threads = 0, iterator = :each, &blk)
     
     # With no extra threads, just spin up the passed iterator
@@ -155,6 +273,28 @@ module Enumerable
     end
   end
 end
-      
+
+__END__
+
+class DelayedEnum
+  include Enumerable
   
+  def initialize coll
+    @coll = coll
+  end
+  
+  def each &blk
+    @coll.each do |i|
+      sleep 0.1
+      yield i
+    end
+  end
+end
+
+c = DelayedEnum.new((1..10).to_a)
+d = DelayedEnum.new(('A'..'N').to_a)
+e = DelayedEnum.new((20..30).to_a)
+f = DelayedEnum.new(('m'..'z').to_a)
+
+[c,d,e,f].mthreach(2,2) {|i| print "#{Thread.current[:threach_num]}: #{i}\n"}
   

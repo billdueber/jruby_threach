@@ -72,6 +72,9 @@ You can also use Threach::MultiEnum, the class behind `#mthreach`, by itself, fo
 
 **Spurious warning**  As of this writing, breaking out of a `threach` loop (by calling `break` in the passed block) causes JRuby to print a warning of the form, 'Exception in thread "RubyThread-44: samples.rb:1"org.JRuby.exceptions.JumpException$BreakJump'. Hopefully this can be tracked down and eliminated by the JRuby team.
 
+## CHANGES
+
+* 0.4.0 Changed signature of Threach::MultiEnum.new to put no. threads up front.
 
 ## Contributing to JRuby_threach
  

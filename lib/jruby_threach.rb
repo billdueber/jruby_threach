@@ -60,13 +60,13 @@ module Threach
     
     # Create a new MultiEnum
     # @param [Enumerable] enumerators A list of enumerators that you wish to act as a single enum
+    # @param [Integer, nil] numthreads The number of threads to dedicate to pulling items 
     # @param [Symbol] iterator Which iterator to call against each enum
     # @param [Integer] size The size of the underlying queue
-    # @param [Integer, nil] numthreads The number of threads to dedicate to pulling items 
     #   off the enumerators and pushing them onto the shared queue. nil or zero implies one for
     #   each enumerator
     # @return [Threach::MultiEnum] the new multi-enumerator
-    def initialize enumerators, iterator = :each, size = 5, numthreads=nil
+    def initialize enumerators, numthreads=nil, iterator = :each, size = 5
       @enum = enumerators
       @iter = iterator
       @size = size
@@ -139,7 +139,7 @@ module Enumerable
   #   [1..10, 'a'..'z'].mthreach(2,2) {|i| process_item(i)}
   # 
   def mthreach(pthreads=nil, threads = 0, iterator = :each,  &blk)
-    me = Threach::MultiEnum.new(self, iterator, threads * 3, pthreads)
+    me = Threach::MultiEnum.new(self, pthreads, iterator, threads*3)
     me.send(:threach, threads, iterator, &blk)
   end
   
@@ -274,7 +274,6 @@ module Enumerable
   end
 end
 
-__END__
 
 class DelayedEnum
   include Enumerable

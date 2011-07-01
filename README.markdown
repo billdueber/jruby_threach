@@ -59,9 +59,10 @@ You can also use Threach::MultiEnum, the class behind `#mthreach`, by itself, fo
 
     me = Threach::MultiEnum.new(
        [1..10, 'a'..'z', File.open('myfile.txt')], # array of enumerables
+       3,     # number of threads. nil => one per enum
        :each, # enumerator method to use
-       10,    # size of the internal queue
-       3)     # number of threads. nil => one per enum
+       10     # size of the internal queue
+      )
     me.each {|item| process_item(item)}
 
 

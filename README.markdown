@@ -74,6 +74,7 @@ You can also use Threach::MultiEnum, the class behind `#mthreach`, by itself, fo
 
 ## CHANGES
 
+* 0.4.1 Remembering to tell consumers to bail on native exception
 * 0.4.0 Changed signature of Threach::MultiEnum.new to put no. threads up front.
 
 ## Contributing to JRuby_threach

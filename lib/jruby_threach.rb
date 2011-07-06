@@ -237,7 +237,7 @@ module Enumerable
         self.send(iterator) do |*x|
           until successful_push = bq.push(x)
             # if we're in here, we got a timeout. Check for errors
-            raise Threach::ThreachNotMyError.new, "bailing", nil if bail if bail
+            raise Threach::ThreachNotMyError.new, "bailing", nil if bail
           end
           print "Queued #{x}\n" if Threach::DEBUG
         end
@@ -248,6 +248,7 @@ module Enumerable
       
       rescue NativeException => e
         print "Producer rescuing native exception #{e.inspect}" if Threach::DEBUG
+        bail = true
       
       rescue Threach::ThreachNotMyError => e
         print "Producer: not my error\n" if Threach::DEBUG
@@ -274,6 +275,7 @@ module Enumerable
   end
 end
 
+__END__
 
 class DelayedEnum
   include Enumerable

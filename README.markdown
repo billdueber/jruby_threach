@@ -1,5 +1,11 @@
 # JRuby_threach
 
+----
+
+**Deprecated and archived**. This never really worked right. Use `concurrent-ruby` for all your threading needs.
+
+----
+
 `jruby_threach` adds a method to Enumerable called `#threach` that takes a block and distributes the objects produced by a call to `#each` (or the enumerator of your choice) automatically to a set of consumers.
 
 `jruby_threach` is roughly seven zillion times better than it's vanilla MRI counterpart (`threach`) in that it can handle non-local exits out of the block (`break` or `raise`) without incident. This is possible due to the more powerful queue class available in Java.
